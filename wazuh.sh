@@ -101,6 +101,12 @@ sudo tee /home/ansible-scripts/install-wazuh.yml > /dev/null <<'EOF'
       register: wazuh_registration
       changed_when: "'Agent key imported' in wazuh_registration.stdout or 'already registered' in wazuh_registration.stdout"
       failed_when: "'ERROR' in wazuh_registration.stderr"
+
+    - name: Start Wazuh agent and enable it at boot
+      systemd:
+        name: wazuh-agent
+        enabled: yes
+        state: started
 EOF
 
 echo "Playbook created at /home/ansible-scripts/install-wazuh.yml."
@@ -108,7 +114,7 @@ echo "Playbook created at /home/ansible-scripts/install-wazuh.yml."
 # Run the Ansible playbook
 ansible-playbook /home/ansible-scripts/install-wazuh.yml
 if [ $? -eq 0 ]; then
-    echo "Wazuh agent installed"
+    echo "Wazuh agent installed and enabled at startup"
 else
     echo "Playbook failed"
     exit 1
