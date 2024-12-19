@@ -90,13 +90,12 @@ sudo tee /home/ansible-scripts/install-wazuh.yml > /dev/null <<'EOF'
         line: "<address>{{ wazuh_manager_ip }}</address>"
         insertafter: '<auth>'
 
-    - name: Enable and start Wazuh agent service
-      systemd:
-        name: wazuh-agent
-        enabled: yes
-        state: started
+    - name: Remove duplicate agent (if exists)
+      shell: "/var/ossec/bin/agent_control -r -n $(hostname)"
+      ignore_errors: yes
+      when: ansible_os_family == "Debian"
 
-    - name: Register this agent with the Wazuh manager (optional)
+    - name: Register this agent with the Wazuh manager
       command: "wazuh-agent-auth -m {{ wazuh_manager_ip }} -p {{ registration_password }} -A $(hostname)"
       register: wazuh_registration
       changed_when: "'Agent key imported' in wazuh_registration.stdout or 'already registered' in wazuh_registration.stdout"
