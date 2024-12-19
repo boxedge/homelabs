@@ -1,5 +1,28 @@
 #!/usr/bin/env bash
 
+# Full cleanup before installation
+if systemctl is-active --quiet wazuh-agent; then
+    echo "Stopping Wazuh agent..."
+    sudo systemctl stop wazuh-agent
+fi
+
+if dpkg -l | grep -q wazuh-agent; then
+    echo "Removing Wazuh agent..."
+    sudo apt purge -y wazuh-agent
+fi
+
+if [ -f /usr/share/keyrings/wazuh-archive-keyring.gpg ]; then
+    echo "Removing Wazuh GPG key..."
+    sudo rm -f /usr/share/keyrings/wazuh-archive-keyring.gpg
+fi
+
+if [ -f /etc/apt/sources.list.d/wazuh.list ]; then
+    echo "Removing Wazuh repository..."
+    sudo rm -f /etc/apt/sources.list.d/wazuh.list
+fi
+
+sudo apt update && sudo apt autoremove -y && sudo apt clean
+
 # Check if Ansible is installed
 if ! command -v ansible &> /dev/null
 then
@@ -40,14 +63,13 @@ sudo tee /home/ansible-scripts/install-wazuh.yml > /dev/null <<'EOF'
       when: ansible_os_family == "Debian"
 
     - name: Add Wazuh GPG key (Debian/Ubuntu)
-      apt_key:
-        url: "https://packages.wazuh.com/key/GPG-KEY-WAZUH"
-        state: present
+      ansible.builtin.command:
+        cmd: "curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --dearmor -o /usr/share/keyrings/wazuh-archive-keyring.gpg"
       when: ansible_os_family == "Debian"
 
     - name: Add Wazuh repository (Debian/Ubuntu)
       apt_repository:
-        repo: "deb https://packages.wazuh.com/4.x/apt stable main"
+        repo: "deb [signed-by=/usr/share/keyrings/wazuh-archive-keyring.gpg] https://packages.wazuh.com/4.x/apt stable main"
         state: present
       when: ansible_os_family == "Debian"
 
@@ -75,7 +97,7 @@ sudo tee /home/ansible-scripts/install-wazuh.yml > /dev/null <<'EOF'
         state: started
 
     - name: Register this agent with the Wazuh manager (optional)
-      command: wazuh-agent-auth -m {{ wazuh_manager_ip }} -p {{ registration_password }} -A $(hostname)
+      command: "wazuh-agent-auth -m {{ wazuh_manager_ip }} -p {{ registration_password }} -A $(hostname)"
       register: wazuh_registration
       changed_when: "'Agent key imported' in wazuh_registration.stdout or 'already registered' in wazuh_registration.stdout"
       failed_when: "'ERROR' in wazuh_registration.stderr"
