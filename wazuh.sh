@@ -63,8 +63,8 @@ sudo tee /home/ansible-scripts/install-wazuh.yml > /dev/null <<'EOF'
       when: ansible_os_family == "Debian"
 
     - name: Add Wazuh GPG key (Debian/Ubuntu)
-      ansible.builtin.command:
-        cmd: "curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --dearmor > /usr/share/keyrings/wazuh-archive-keyring.gpg"
+      ansible.builtin.shell:
+        cmd: "curl -s https://packages.wazuh.com/key/GPG-KEY-WAZUH | gpg --dearmor -o /usr/share/keyrings/wazuh-archive-keyring.gpg"
       when: ansible_os_family == "Debian"
 
     - name: Add Wazuh repository (Debian/Ubuntu)
